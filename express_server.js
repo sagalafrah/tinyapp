@@ -61,6 +61,14 @@ const longURL = urlDatabase[req.params.shortURL]
     res.redirect(longURL);
   });
 
+  app.post("/urls/:shortURL/delete", (req, res) => {
+ //dont have to set a variable
+ delete urlDatabase[req.params.shortURL]
+ //pulls short URL from our database of URLs, short URL is the placeholder
+ res.redirect("/urls");
+  });
+
+
   app.listen(PORT, () => {
     console.log(`Example app listening on port ${PORT}!`);
   });
