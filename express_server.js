@@ -7,6 +7,19 @@ const cookieParser = require('cookie-parser')
 
 app.use(cookieParser())
 
+const users = { 
+    "userRandomID": {
+      id: "userRandomID", 
+      email: "user@example.com", 
+      password: "purple-monkey-dinosaur"
+    },
+   "user2RandomID": {
+      id: "user2RandomID", 
+      email: "user2@example.com", 
+      password: "dishwasher-funk"
+    }
+  }
+
 function generateRandomString() {
     let randomString = "";
     const randomCharacters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -32,9 +45,10 @@ app.get("/", (req, res) => {
 });
 
 app.get("/urls/new", (req, res) => {
-    res.render("urls_new");
+    const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+    res.render("urls_new", templateVars);
   });
-
+//make sure that there is a templateVars because you need to pass it as a second argument because we use res.render (every time!)
 app.get("/urls.json", (req, res) => {
     res.json(urlDatabase);
   });
@@ -66,6 +80,14 @@ app.get("/urls.json", (req, res) => {
     console.log(urlDatabase)
       });
 
+app.get("/urls/:shortURL/update", (req, res) => {
+        //dont have to set a variable
+        // const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+        const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL], username: req.cookies["username"]};
+        //pulls short URL from our database of URLs, short URL is the placeholder
+        res.render('urls_show', templateVars)
+         });
+
 
   app.post("/urls", (req, res) => {
     console.log(req.body);  // Log the POST request body to the console
@@ -86,6 +108,9 @@ const longURL = urlDatabase[req.params.shortURL]
  res.redirect("/urls");
   });
 
+
+
+
   app.get('/login', (req, res) => {
   
     const templateVars = {  
@@ -98,16 +123,21 @@ const longURL = urlDatabase[req.params.shortURL]
   
   app.post('/login', (req,res) => {
     // set a cookie named Username 
-    res.cookie("username", req.body.userName);
+    res.cookie("username", req.body.username);
     res.redirect(/urls/) 
   });
 
   app.post('/logout', (req,res) => {
     // set a cookie named Username 
-    res.clearCookie("username", req.body.userName);
+    res.clearCookie("username", req.body.username);
     res.redirect(/urls/) 
   });
 
+  app.get('/register', (req, res) => {
+    const templateVars = { urls: urlDatabase, username: req.cookies["username"] };
+    res.render('urls_registration', templateVars)
+// res.send('OK')
+  });
 
   app.listen(PORT, () => {
     console.log(`Example app listening on port ${PORT}!`);
