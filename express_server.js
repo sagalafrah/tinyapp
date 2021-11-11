@@ -50,6 +50,18 @@ app.get("/urls.json", (req, res) => {
   });
   //looking up value of key , get whatever matches the value of the short url key
 
+  app.post("/urls/update" , (req, res) => {
+      //did update bc shorturls wasnt working!!!triggering correctly
+    const shortURL = req.body.shortURL
+    const longURL = req.body.longURL
+    console.log(urlDatabase);
+    // console.log(req.body)
+    urlDatabase[shortURL] = longURL 
+    // when entered on this page, it will update/overwrite the existing key 
+    console.log(urlDatabase)
+      });
+
+
   app.post("/urls", (req, res) => {
     console.log(req.body);  // Log the POST request body to the console
     res.send("Ok");         // Respond with 'Ok' (we will replace this)
@@ -60,12 +72,27 @@ app.get("/urls.json", (req, res) => {
 const longURL = urlDatabase[req.params.shortURL]
     res.redirect(longURL);
   });
+  //redirect allows us not to write the same stuff over and over again!
 
   app.post("/urls/:shortURL/delete", (req, res) => {
  //dont have to set a variable
  delete urlDatabase[req.params.shortURL]
  //pulls short URL from our database of URLs, short URL is the placeholder
  res.redirect("/urls");
+  });
+
+  app.post('/login', (req,res) => {
+    // set a cookie named Username 
+    res.cookie("username", req.body.userName);
+    console.log('req body username',req.body.userName)
+    res.redirect(/urls/) 
+  });
+
+  app.post('/logout', (req,res) => {
+    // set a cookie named Username 
+    res.clearCookie("username", req.body.userName);
+    console.log('req body username',req.body.userName)
+    res.redirect(/urls/) 
   });
 
 
