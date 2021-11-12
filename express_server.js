@@ -100,6 +100,7 @@ app.get('/', (req, res) => {
 //explanation
 
 
+
 app.get('/urls/new', (req, res) => {
   if (req.session.userID) {
     const templateVars = {user: users[req.session.userID]};
@@ -117,7 +118,7 @@ app.get('/urls', (req, res) => {
   const templateVars = { urls: userUrls, user: users[userID] };
   
   if (!userID) {
-    res.statusCode = 401;
+    return res.status(400).send("Sorry, you have to make an account or log-in to do that!")
   }
   
   res.render('urls_index', templateVars);
