@@ -1,7 +1,7 @@
 /* My Setup */
 const express = require("express");
 const app = express();
-const PORT = 8080; // default port 8080
+const PORT = 8080; 
 app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
@@ -12,21 +12,6 @@ app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-r
 
 
 /* My Functions */
-const userExists = (email) => {
-    for (const user in users) {
-        if (users[user].email === email) {
-            return true;
-        }
-    } return false;
-};
-
-const getUser = (email) => {
-    for (const user in users) {
-        if (users[user].email === email) {
-            return users[user];
-        }
-    } return;
-};
 
 function generateRandomString() {
   let randomString = "";
@@ -37,6 +22,28 @@ function generateRandomString() {
   }
   return randomString;
 }
+
+const getUserByEmail = (email, database) => {
+  for (const user in database) {
+    if (database[user].email === email) {
+      return database[user];
+    }
+  }
+  return undefined;
+};
+
+const urlsForUser = (id, database) => {
+  let userUrls = {};
+
+  for (const shortURL in database) {
+    if (database[shortURL].userID === id) {
+      userUrls[shortURL] = database[shortURL];
+    }
+  }
+
+  return userUrls;
+};
+
 
 /* My Objects */
 
@@ -67,7 +74,21 @@ const users = {
 
 
 
-/* ROUTES*/ /*Get Routes*/
+/* My Routes */
+//get routes:
+//post routes:
+
+
+
+app.get("/urls.json", (req, res) => {
+  res.json(urlDatabase);
+});
+
+app.get("/hello", (req, res) => {
+  res.send("<html><body>Hello <b>World</b></body></html>\n");
+});
+
+
 
 app.get('/', (req, res) => {
   if (req.session.userID) {
@@ -76,69 +97,58 @@ app.get('/', (req, res) => {
     res.redirect('/login');
   }
 });
+//explanation
 
-app.get("/urls/new", (req, res) => {
-  const userID = req.cookies["user_id"]
-  if (userID) {
-    const templateVars = { 
-      urls: urlDatabase, 
-      user: users[userID], };
-    
-  res.render("urls_new", templateVars);
+
+app.get('/urls/new', (req, res) => {
+  if (req.session.userID) {
+    const templateVars = {user: users[req.session.userID]};
+    res.render('urls_new', templateVars);
   } else {
-res.redirect("/login")
-
+    res.redirect('/login');
   }
-  // const templateVars = { 
-  //     urls: urlDatabase, 
-  //     user: users[req.cookies["user_id"]], };
-    
-  // res.render("urls_new", templateVars);
-});
-//make sure that there is a templateVars because you need to pass it as a second argument because we use res.render (every time!)
-app.get("/urls.json", (req, res) => {
-  res.json(urlDatabase);
 });
 
-app.get("/hello", (req, res) => {
-  res.send("<html><body>Hello <b>World</b></body></html>\n");
-});
-app.get("/urls", (req, res) => {
-  // const templateVars = { urls: urlDatabase };
- const templateVars = {
-  urls: urlDatabase,
-  user: users[req.cookies["user_id"]],
-};
-res.render('urls_index', templateVars);
+//explanation
+
+app.get('/urls', (req, res) => {
+  const userID = req.session.userID;
+  const userUrls = urlsForUser(userID, urlDatabase);
+  const templateVars = { urls: userUrls, user: users[userID] };
+  
+  if (!userID) {
+    res.statusCode = 401;
+  }
+  
+  res.render('urls_index', templateVars);
 });
 
-// app.get("/urls/:shortURL", (req, res) => {
-//   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]};
-//   res.render("urls_show", templateVars);
-// });
-//looking up value of key , get whatever matches the value of the short url key
+//explanation
 
-// app.put("/urls/update" , (req, res) => {
-//   //did update bc shorturls wasnt working!!!triggering correctly
-//   const shortURL = req.body.shortURL;
-//   const longURL = req.body.longURL;
-//   const templateVars = {shortURL, longURL, 
-//     user: users[req.cookies["user_id"]],}
-//   console.log(req.body)
-//   urlDatabase[shortURL] = longURL;
-//   // when entered on this page, it will update/overwrite the existing key
-//   console.log(urlDatabase);
-//   res.redirect('/urls', templateVars)
-// });
+//NOTE: make sure that there is a templateVars because you need to pass it as a second argument because we use res.render (every time!)
+
+/* Editing */
 
 app.get("/urls/:shortURL", (req, res) => {
-//   //dont have to set a variable
   const templateVars = { 
       shortURL: req.params.shortURL, 
       longURL: urlDatabase[req.params.shortURL], 
-      user: users[req.cookies["user_id"]],};
+      user: users[req.session["user_id"]],};
   res.render('urls_show', templateVars);
 });
+
+app.post('/urls/:shortURL', (req, res) => {
+  const shortURL = req.params.shortURL;
+  if (req.session.userID  && req.session.userID === urlDatabase[shortURL].userID) {
+    urlDatabase[shortURL].longURL = req.body.updatedURL;
+    res.redirect('/urls');
+  } else {
+    return res.status(400).send("Sorry, you have to make an account or log-in to do that!")
+  }
+});
+
+
+
 
 
 app.post("/urls", (req, res) => { 
@@ -239,6 +249,6 @@ app.post("/register", (req, res) => {
   });
   
 
-app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
-});
+  app.listen(PORT, () => {
+    console.log(`Example app listening on port ${PORT}!`);
+  });
