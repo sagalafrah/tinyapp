@@ -1,25 +1,17 @@
+/* My Setup */
 const express = require("express");
 const app = express();
 const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
+const bodyParser = require("body-parser");
+app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
-
-
 app.use(cookieParser());
+const cookieSession = require('cookie-session')
+app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-road'}));
 
-const users = {
-  "userRandomID": {
-    id: "userRandomID",
-    email: "user@example.com",
-    password: "purple-monkey-dinosaur"
-  },
-  "user2RandomID": {
-    id: "user2RandomID",
-    email: "user2@example.com",
-    password: "dishwasher-funk"
-  }
-};
 
+/* My Functions */
 const userExists = (email) => {
     for (const user in users) {
         if (users[user].email === email) {
@@ -36,7 +28,6 @@ const getUser = (email) => {
     } return;
 };
 
-
 function generateRandomString() {
   let randomString = "";
   const randomCharacters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
@@ -47,25 +38,62 @@ function generateRandomString() {
   return randomString;
 }
 
-
+/* My Objects */
 
 const urlDatabase = {
-  "b2xVn2": "http://www.lighthouselabs.ca",
-  "9sm5xK": "http://www.google.com"
+  b6UTxQ: {
+      longURL: "https://www.tsn.ca",
+      userID: "aJ48lW"
+  },
+  i3BoGr: {
+      longURL: "https://www.google.ca",
+      userID: "aJ48lW"
+  }
 };
 
-const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({extended: true}));
+const users = {
+  "userRandomID": {
+    id: "userRandomID",
+    email: "user@example.com",
+    password: "purple-monkey-dinosaur"
+  },
+  "user2RandomID": {
+    id: "user2RandomID",
+    email: "user2@example.com",
+    password: "dishwasher-funk"
+  }
+};
 
-app.get("/", (req, res) => {
-  res.send("Hello!");
+
+
+
+/* ROUTES*/ /*Get Routes*/
+
+app.get('/', (req, res) => {
+  if (req.session.userID) {
+    res.redirect('/urls');
+  } else {
+    res.redirect('/login');
+  }
 });
 
 app.get("/urls/new", (req, res) => {
-  const templateVars = { 
+  const userID = req.cookies["user_id"]
+  if (userID) {
+    const templateVars = { 
       urls: urlDatabase, 
-      user: users[req.cookies["user_id"]], };
+      user: users[userID], };
+    
   res.render("urls_new", templateVars);
+  } else {
+res.redirect("/login")
+
+  }
+  // const templateVars = { 
+  //     urls: urlDatabase, 
+  //     user: users[req.cookies["user_id"]], };
+    
+  // res.render("urls_new", templateVars);
 });
 //make sure that there is a templateVars because you need to pass it as a second argument because we use res.render (every time!)
 app.get("/urls.json", (req, res) => {
@@ -84,25 +112,27 @@ app.get("/urls", (req, res) => {
 res.render('urls_index', templateVars);
 });
 
-app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]};
-  res.render("urls_show", templateVars);
-});
+// app.get("/urls/:shortURL", (req, res) => {
+//   const templateVars = { shortURL: req.params.shortURL, longURL: urlDatabase[req.params.shortURL]};
+//   res.render("urls_show", templateVars);
+// });
 //looking up value of key , get whatever matches the value of the short url key
 
-app.post("/urls/update" , (req, res) => {
-  //did update bc shorturls wasnt working!!!triggering correctly
-  const shortURL = req.body.shortURL;
-  const longURL = req.body.longURL;
-  console.log(urlDatabase);
-  // console.log(req.body)
-  urlDatabase[shortURL] = longURL;
-  // when entered on this page, it will update/overwrite the existing key
-  console.log(urlDatabase);
-});
+// app.put("/urls/update" , (req, res) => {
+//   //did update bc shorturls wasnt working!!!triggering correctly
+//   const shortURL = req.body.shortURL;
+//   const longURL = req.body.longURL;
+//   const templateVars = {shortURL, longURL, 
+//     user: users[req.cookies["user_id"]],}
+//   console.log(req.body)
+//   urlDatabase[shortURL] = longURL;
+//   // when entered on this page, it will update/overwrite the existing key
+//   console.log(urlDatabase);
+//   res.redirect('/urls', templateVars)
+// });
 
-app.get("/urls/:shortURL/update", (req, res) => {
-  //dont have to set a variable
+app.get("/urls/:shortURL", (req, res) => {
+//   //dont have to set a variable
   const templateVars = { 
       shortURL: req.params.shortURL, 
       longURL: urlDatabase[req.params.shortURL], 
@@ -111,13 +141,20 @@ app.get("/urls/:shortURL/update", (req, res) => {
 });
 
 
-app.post("/urls", (req, res) => {
-  console.log(req.body);  // Log the POST request body to the console
-  res.send("Ok");         // Respond with 'Ok' (we will replace this)
+app.post("/urls", (req, res) => { 
+  const userID = req.cookies["user_id"]
+  if (userID) {
+    res.send("Ok");  
+    res.redirect('/urls')
+  } else {
+    return res.status(403).send("Please log-in to access.")
+  }
+         
 });
 
 
 app.get("/u/:shortURL", (req, res) => {
+
   const longURL = urlDatabase[req.params.shortURL];
   res.redirect(longURL);
 });
