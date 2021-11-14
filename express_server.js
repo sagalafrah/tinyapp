@@ -9,6 +9,7 @@ const cookieParser = require('cookie-parser');
 app.use(cookieParser());
 const cookieSession = require('cookie-session');
 app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-road'}));
+const bcrypt = require('bcrypt');
 
 
 /* My Functions */
