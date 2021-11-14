@@ -100,7 +100,6 @@ app.get('/', (req, res) => {
 //explanation
 
 
-
 app.get('/urls/new', (req, res) => {
   if (req.session.userID) {
     const templateVars = {user: users[req.session.userID]};
@@ -116,10 +115,9 @@ app.get('/urls', (req, res) => {
   const userID = req.session.userID;
   const userUrls = urlsForUser(userID, urlDatabase);
   const templateVars = { urls: userUrls, user: users[userID] };
-  
   if (!userID) {
-    return res.status(400).send("Sorry, you have to make an account or log-in to do that!")
-  }
+    return res.status(400).send("In order to access your URLs, please login or register!");
+  } 
   
   res.render('urls_index', templateVars);
 });
@@ -153,10 +151,14 @@ app.post('/urls/:shortURL', (req, res) => {
 
 
 app.post("/urls", (req, res) => { 
-  const userID = req.cookies["user_id"]
-  if (userID) {
-    res.send("Ok");  
-    res.redirect('/urls')
+  
+  if (req.session.userID) {
+    const shortURL = generateRandomString();
+      urlDatabase[shortURL] = {
+        longURL: req.body.longURL,
+        userID: req.session.userID
+      };
+      res.redirect(`/urls/${shortURL}`);
   } else {
     return res.status(403).send("Please log-in to access.")
   }
@@ -194,7 +196,7 @@ app.get('/login', (req, res) => {
 app.post('/login', (req,res) => {
     const email = req.body.email
     const password = req.body.password
-    const user = getUser(email) //will return user object if it has an email, if not, will return undefined
+    const user = getUserByEmail(email) //will return user object if it has an email, if not, will return undefined
    if (!user) {
     return res.status(403).send("Sorry! Email cannot be found.")
    }
@@ -235,7 +237,7 @@ app.post("/register", (req, res) => {
     return res.status(400).send("Please provide a valid email and password");
     };
   
-    if (userExists(submittedEmail)) {
+    if (getUserByEmail(submittedEmail)) {
       return res.status(400).send("An account already exists for this email address. Please provide a different email address.");
     };
   
