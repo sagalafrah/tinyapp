@@ -1,65 +1,21 @@
-/* My Setup */
+/*REQUIRES & CONFIGURATIONS*/
 const express = require("express");
 const app = express();
 const PORT = 8080;
-app.set("view engine", "ejs");
-const bodyParser = require("body-parser");
-app.use(bodyParser.urlencoded({extended: true}));
-const cookieParser = require('cookie-parser');
-app.use(cookieParser());
-const cookieSession = require('cookie-session');
-app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-road'}));
 const bcrypt = require('bcrypt');
+const {generateRandomString, getUserByEmail, urlsForUser} = require("./helpers");
+const cookieSession = require('cookie-session');
+const bodyParser = require("body-parser");
+app.set("view engine", "ejs");
+app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-road'}));
+app.use(bodyParser.urlencoded({extended: true}));
 
-
-
-/* My Functions */
-
-const generateRandomString = () => {
-  let randomString = "";
-  const randomCharacters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
-  for (let i = 0; i < 6; i++) {
-    randomString += randomCharacters.charAt(Math.floor(Math.random() * randomCharacters.length));
-
-  }
-  return randomString;
-};
-
-const getUserByEmail = (email, database) => {
-  for (const user in database) {
-    if (database[user].email === email) {
-      return database[user];
-    }
-  }
-  return undefined;
-};
-
-const urlsForUser = (id, database) => {
-  let userUrls = {};
-
-  for (const shortURL in database) {
-    if (database[shortURL].userID === id) {
-      userUrls[shortURL] = database[shortURL];
-    }
-  }
-
-  return userUrls;
-};
-
-
-/* My Objects */
+/* DATABASE OBJECTS FOR URLS & USERS */
 
 const urlDatabase = {};
 const users = {};
 
-
-
-
-/* My Routes */
-//get routes:
-//post routes:
-
-
+/* BASIC ROUTES FOR SET-UP*/
 
 app.get("/urls.json", (req, res) => {
   res.json(urlDatabase);
@@ -68,8 +24,6 @@ app.get("/urls.json", (req, res) => {
 app.get("/hello", (req, res) => {
   res.send("<html><body>Hello <b>World</b></body></html>\n");
 });
-
-
 
 app.get('/', (req, res) => {
   if (req.session.userID) {
@@ -80,20 +34,21 @@ app.get('/', (req, res) => {
 });
 //explanation
 
+/* ROUTES TO ACCESS URLS*/
+//The res.render() is used to render a view and sends the rendered HTML string to the client.
 
 app.get('/urls', (req, res) => {
   const userID = req.session.userID;
   const userUrls = urlsForUser(userID, urlDatabase);
-  const templateVars = { urls: userUrls, user: users[userID] };
+  const templateVars = { urls: userUrls, user: users[userID]};
   if (!userID) {
-    return res.status(400).send("Sorry, you have to make an account or log-in to do that!");
+    return res.status(400).send("Sorry, you have to make an account or log-in to do that!😓");
   }
   
   res.render('urls_index', templateVars);
 });
 
-app.post("/urls", (req, res) => {
-  
+app.post('/urls', (req, res) => {
   if (req.session.userID) {
     const shortURL = generateRandomString();
     urlDatabase[shortURL] = {
@@ -102,29 +57,25 @@ app.post("/urls", (req, res) => {
     };
     res.redirect(`/urls/${shortURL}`);
   } else {
-    return res.status(403).send("Sorry, you have to make an account or log-in to do that!");
+    res.redirect('/login');
   }
-         
+ 
 });
 
-
+//route to render the urls_new.ejs template
 app.get('/urls/new', (req, res) => {
   if (req.session.userID) {
     const templateVars = {user: users[req.session.userID]};
     res.render('urls_new', templateVars);
   } else {
-    res.redirect('/login');
+    return res.status(403).send("Sorry, you have to make an account or log-in to do that!😓");
   }
 });
 
-//explanation
 
+/* UPDATING/EDITING URLS */
 
-//explanation
-
-//NOTE: make sure that there is a templateVars because you need to pass it as a second argument because we use res.render (every time!)
-
-/* Editing */
+//page to display a single URL and its shortened form generate a link that will redirect to the appropriate longURL.
 
 app.get("/urls/:shortURL", (req, res) => {
   const shortURL = req.params.shortURL;
@@ -134,52 +85,50 @@ app.get("/urls/:shortURL", (req, res) => {
 
   if (!urlDatabase[shortURL]) {
     
-    return res.status(403).send("Sorry, couldn't find this URL!");
+    return res.status(403).send("Sorry, couldn't find this URL!😥");
 
   } else if (!userID || !userUrls[shortURL]) {
     
-    return res.status(403).send("Sorry, you have to make an account or log-in to do that!");
+    return res.status(403).send("Sorry, you have to make an account or log-in to do that!😓");
     
   } else {
     res.render('urls_show', templateVars);
   }
 });
 
-app.post('/urls/:shortURL', (req, res) => {
-  const shortURL = req.params.shortURL;
-  if (req.session.userID  && req.session.userID === urlDatabase[shortURL].userID) {
-    urlDatabase[shortURL].longURL = req.body.updatedURL;
-    res.redirect('/urls');
-  } else {
-    return res.status(400).send("Sorry, you have to make an account or log-in to do that!");
-  }
+app.post("/urls/:shortURL", (req, res) => {
+  urlDatabase[req.params.shortURL].longURL = req.body.newURL;
+  res.redirect("/urls");
 });
+
 
 app.get("/u/:shortURL", (req, res) => {
-//Anyone should be able to access this
-  if (urlDatabase[req.params.shortURL]) {
-    res.redirect(urlDatabase[req.params.shortURL].longURL);
-  } else {
-    return res.status(400).send("Sorry, couldn't find this URL!");
+  const newURL = urlDatabase[req.params.shortURL].longURL;
+  res.redirect(newURL);
+  if (!newURL) {
+    res.redirect("/urls");
   }
 });
-//redirect allows us not to write the same stuff over and over again!
+
+
+
+/* DELETING URLS */
+
+// route that removes a URL resource. Added permissions conditional so that someone who is not logged in cannot delete a URL.
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  //have to set a variable, thats why it was an error
-    const userID = req.session.user_id;
-    const userUrls = urlsForUser(userID, urlDatabase);
-    if (Object.keys(userUrls).includes(req.params.shortURL)) {
-      const shortURL = req.params.shortURL;
-      delete urlDatabase[shortURL];
-      res.redirect('/urls');
-    } else {
-      return res.status(400).send("Sorry, you have to make an account or log-in to do that!");
-    }
-  });
+  const shortURL = req.params.shortURL;
+  if (req.session.userID  && req.session.userID === urlDatabase[shortURL].userID) {
+    delete urlDatabase[shortURL];
+    res.redirect('/urls');
+  } else {
+    return res.status(400).send("Sorry! You can't delete URLs. Make an account or login maybe? 😊");
+  }
+});
 
 
-//Logging In & Out
+
+/* LOGIN AND LOGOUT ROUTES*/
 
 app.get('/login', (req, res) => {
   if (req.session.userID) {
@@ -193,30 +142,21 @@ app.get('/login', (req, res) => {
 
   
 app.post('/login', (req,res) => {
-  const email = req.body.email;
-  const password = req.body.password;
   const user = getUserByEmail(req.body.email, users);
-  if (!user) {
-    return res.status(403).send("Sorry! Email cannot be found.");
+  if (user && bcrypt.compareSync(req.body.password, user.password)) {
+    req.session.userID = user.userID;
+    res.redirect('/urls');
+  } else {
+    return res.status(400).send("Sorry! Wrong email or password!❌❌❌ Try again.");
   }
-  
-  if (user.password !== password) {
-    return res.status(403).send("Wrong password! Try again.");
-  }
-
-  req.session.userID = user.userID;
-  res.redirect('/urls');
 });
 
-
-
-app.post('/logout', (req,res) => {
-  res.clearCookie('session');
-  res.clearCookie('session.sig');
-  res.redirect('/urls');
+app.post('/logout', (req, res) => {
+  req.session = null;
+  res.redirect('/login');
 });
 
-//Registration & Signing Up
+/* REGISTRATION ROUTES */
 
 app.get('/register', (req, res) => {
   if (req.session.userID) {
@@ -236,19 +176,22 @@ app.post("/register", (req, res) => {
       users[userID] = {
         userID,
         email: req.body.email,
-        password: req.body.password
+        password: bcrypt.hashSync(req.body.password, 10)
       };
       req.session.userID = userID;
       res.redirect('/urls');
     } else {
-      return res.status(403).send("Someone is already using this email. Try another one?");
+      return res.status(403).send("It appears someone is already using this e-mail...🤭 Try again!");
     }
-
+  
   } else {
-    return res.status(403).send("C'mon, don't leave it empty! Please type in an email & password!");
+    return res.status(403).send("C'mon, you can't just leave it empty! 🙄 Put in an email or a password.");
   }
 });
+  
+
+/*CONNECTION LISTENER*/
 
 app.listen(PORT, () => {
-  console.log(`Example app listening on port ${PORT}!`);
+  console.log(`TinyApp successfully connected & listening on port ${PORT}!`);
 });
