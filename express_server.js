@@ -32,9 +32,10 @@ app.get('/', (req, res) => {
     res.redirect('/login');
   }
 });
-//explanation
+
 
 /* ROUTES TO ACCESS URLS*/
+
 //The res.render() is used to render a view and sends the rendered HTML string to the client.
 
 app.get('/urls', (req, res) => {
