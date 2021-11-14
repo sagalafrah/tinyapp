@@ -1,27 +1,27 @@
 /* My Setup */
 const express = require("express");
 const app = express();
-const PORT = 8080; 
+const PORT = 8080;
 app.set("view engine", "ejs");
 const bodyParser = require("body-parser");
 app.use(bodyParser.urlencoded({extended: true}));
 const cookieParser = require('cookie-parser');
 app.use(cookieParser());
-const cookieSession = require('cookie-session')
+const cookieSession = require('cookie-session');
 app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-road'}));
 
 
 /* My Functions */
 
-function generateRandomString() {
+const generateRandomString = () => {
   let randomString = "";
   const randomCharacters = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
   for (let i = 0; i < 6; i++) {
     randomString += randomCharacters.charAt(Math.floor(Math.random() * randomCharacters.length));
-  
+
   }
   return randomString;
-}
+};
 
 const getUserByEmail = (email, database) => {
   for (const user in database) {
@@ -49,12 +49,12 @@ const urlsForUser = (id, database) => {
 
 const urlDatabase = {
   b6UTxQ: {
-      longURL: "https://www.tsn.ca",
-      userID: "aJ48lW"
+    longURL: "https://www.tsn.ca",
+    userID: "aJ48lW"
   },
   i3BoGr: {
-      longURL: "https://www.google.ca",
-      userID: "aJ48lW"
+    longURL: "https://www.google.ca",
+    userID: "aJ48lW"
   }
 };
 
@@ -100,6 +100,33 @@ app.get('/', (req, res) => {
 //explanation
 
 
+app.get('/urls', (req, res) => {
+  const userID = req.session.userID;
+  const userUrls = urlsForUser(userID, urlDatabase);
+  const templateVars = { urls: userUrls, user: users[userID] };
+  if (!userID) {
+    return res.status(400).send("Sorry, you have to make an account or log-in to do that!");
+  }
+  
+  res.render('urls_index', templateVars);
+});
+
+app.post("/urls", (req, res) => {
+  
+  if (req.session.userID) {
+    const shortURL = generateRandomString();
+    urlDatabase[shortURL] = {
+      longURL: req.body.longURL,
+      userID: req.session.userID
+    };
+    res.redirect(`/urls/${shortURL}`);
+  } else {
+    return res.status(403).send("Sorry, you have to make an account or log-in to do that!");
+  }
+         
+});
+
+
 app.get('/urls/new', (req, res) => {
   if (req.session.userID) {
     const templateVars = {user: users[req.session.userID]};
@@ -111,16 +138,6 @@ app.get('/urls/new', (req, res) => {
 
 //explanation
 
-app.get('/urls', (req, res) => {
-  const userID = req.session.userID;
-  const userUrls = urlsForUser(userID, urlDatabase);
-  const templateVars = { urls: userUrls, user: users[userID] };
-  if (!userID) {
-    return res.status(400).send("In order to access your URLs, please login or register!");
-  } 
-  
-  res.render('urls_index', templateVars);
-});
 
 //explanation
 
@@ -129,11 +146,22 @@ app.get('/urls', (req, res) => {
 /* Editing */
 
 app.get("/urls/:shortURL", (req, res) => {
-  const templateVars = { 
-      shortURL: req.params.shortURL, 
-      longURL: urlDatabase[req.params.shortURL], 
-      user: users[req.session["user_id"]],};
-  res.render('urls_show', templateVars);
+  const shortURL = req.params.shortURL;
+  const userID = req.session.userID;
+  const userUrls = urlsForUser(userID, urlDatabase);
+  const templateVars = { urlDatabase, userUrls, shortURL, user: users[userID] };
+
+  if (!urlDatabase[shortURL]) {
+    
+    return res.status(403).send("Sorry, couldn't find this URL!");
+
+  } else if (!userID || !userUrls[shortURL]) {
+    
+    return res.status(403).send("Sorry, you have to make an account or log-in to do that!");
+    
+  } else {
+    res.render('urls_show', templateVars);
+  }
 });
 
 app.post('/urls/:shortURL', (req, res) => {
@@ -142,116 +170,104 @@ app.post('/urls/:shortURL', (req, res) => {
     urlDatabase[shortURL].longURL = req.body.updatedURL;
     res.redirect('/urls');
   } else {
-    return res.status(400).send("Sorry, you have to make an account or log-in to do that!")
+    return res.status(400).send("Sorry, you have to make an account or log-in to do that!");
   }
 });
-
-
-
-
-
-app.post("/urls", (req, res) => { 
-  
-  if (req.session.userID) {
-    const shortURL = generateRandomString();
-      urlDatabase[shortURL] = {
-        longURL: req.body.longURL,
-        userID: req.session.userID
-      };
-      res.redirect(`/urls/${shortURL}`);
-  } else {
-    return res.status(403).send("Please log-in to access.")
-  }
-         
-});
-
 
 app.get("/u/:shortURL", (req, res) => {
-
-  const longURL = urlDatabase[req.params.shortURL];
-  res.redirect(longURL);
+//Anyone should be able to access this
+  if (urlDatabase[req.params.shortURL]) {
+    res.redirect(urlDatabase[req.params.shortURL].longURL);
+  } else {
+    return res.status(400).send("Sorry, couldn't find this URL!");
+  }
 });
 //redirect allows us not to write the same stuff over and over again!
 
 app.post("/urls/:shortURL/delete", (req, res) => {
-  //dont have to set a variable
-  delete urlDatabase[req.params.shortURL];
-  //pulls short URL from our database of URLs, short URL is the placeholder
-  res.redirect("/urls");
-});
+  //have to set a variable, thats why it was an error
+    const userID = req.session.user_id;
+    const userUrls = urlsForUser(userID, urlDatabase);
+    if (Object.keys(userUrls).includes(req.params.shortURL)) {
+      const shortURL = req.params.shortURL;
+      delete urlDatabase[shortURL];
+      res.redirect('/urls');
+    } else {
+      return res.status(400).send("Sorry, you have to make an account or log-in to do that!");
+    }
+  });
 
 
 //Logging In & Out
 
 app.get('/login', (req, res) => {
-  
-  const templateVars = {
-    user: users[req.cookies.user_id],
-    email: req.cookies.email
-  };
+  if (req.session.userID) {
+    res.redirect('/urls');
+    return;
+  }
+
+  const templateVars = {user: users[req.session.userID]};
   res.render('urls_login', templateVars);
 });
 
   
 app.post('/login', (req,res) => {
-    const email = req.body.email
-    const password = req.body.password
-    const user = getUserByEmail(email) //will return user object if it has an email, if not, will return undefined
-   if (!user) {
-    return res.status(403).send("Sorry! Email cannot be found.")
-   }
-   console.log(user.password, password)
-if (user.password !== password) {
-console.log('wrong')
-return res.status(403).send("Wrong password! Try again.")
-}
-console.log(req.body.user_id)
-  res.cookie("user_id", user.id);
-  res.redirect(/urls/);
+  const email = req.body.email;
+  const password = req.body.password;
+  const user = getUserByEmail(req.body.email, users);
+  if (!user) {
+    return res.status(403).send("Sorry! Email cannot be found.");
+  }
+  
+  if (user.password !== password) {
+    return res.status(403).send("Wrong password! Try again.");
+  }
+
+  req.session.userID = user.userID;
+  res.redirect('/urls');
 });
 
 
 
 app.post('/logout', (req,res) => {
-  // set a cookie named userID
-  res.clearCookie("user_id");
-  res.redirect(/urls/);
+  res.clearCookie('session');
+  res.clearCookie('session.sig');
+  res.redirect('/urls');
 });
 
 //Registration & Signing Up
 
 app.get('/register', (req, res) => {
-    const templateVars = {
-        user: users[req.cookies["user_id"]],
-      };
+  if (req.session.userID) {
+    res.redirect('/urls');
+    return;
+  }
+
+  const templateVars = {user: users[req.session.userID]};
   res.render('urls_registration', templateVars);
-// res.send('OK')
 });
 
 app.post("/register", (req, res) => {
-    const submittedEmail = req.body.email;
-    const submittedPassword = req.body.password;
+  if (req.body.email && req.body.password) {
   
-    if (!submittedEmail || !submittedPassword) {
-        // res.status(400).send("Please provide a valid email and password");
-    return res.status(400).send("Please provide a valid email and password");
-    };
-  
-    if (getUserByEmail(submittedEmail)) {
-      return res.status(400).send("An account already exists for this email address. Please provide a different email address.");
-    };
-  
-    const newUserID = generateRandomString();
-    users[newUserID] = {
-      id: newUserID,
-      email: submittedEmail,
-      password: submittedPassword
-    };
-      res.cookie('user_id', newUserID);
-      res.redirect("/urls");
-  });
-  
+    if (!getUserByEmail(req.body.email, users)) {
+      const userID = generateRandomString();
+      users[userID] = {
+        userID,
+        email: req.body.email,
+        password: req.body.password
+      };
+      req.session.userID = userID;
+      res.redirect('/urls');
+    } else {
+      return res.status(403).send("Someone is already using this email. Try another one?");
+    }
 
-  app.listen(PORT, () => {
-    console.log(`Example app listening on port ${PORT}!`);
-  });
+  } else {
+    return res.status(403).send("C'mon, don't leave it empty! Please type in an email & password!");
+  }
+});
+
+app.listen(PORT, () => {
+  console.log(`Example app listening on port ${PORT}!`);
+});
