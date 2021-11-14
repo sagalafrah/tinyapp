@@ -11,6 +11,8 @@ const cookieSession = require('cookie-session');
 app.use(cookieSession({name: 'session', secret: 'why-did-the-chicken-cross-the-road'}));
 const bcrypt = require('bcrypt');
 
+const urlDatabase = {};
+const users = {};
 
 /* My Functions */
 
