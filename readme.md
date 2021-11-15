@@ -6,7 +6,7 @@ TinyApp is a full stack web application that allows users to shorten long URLs (
 
 *Registration page*
 
-!["Screenshot of Registration Page"](hhttps://github.com/sagalafrah/tinyapp/blob/master/docs/register.png)
+!["Screenshot of Registration Page"](https://github.com/sagalafrah/tinyapp/blob/master/docs/register.png)
 
 *Login page*
 
